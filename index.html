@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHT — Programming HyperText</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    margin: 0; background: #0d1117; color: #c9d1d9;
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  body.light { background: #f6f8fa; color: #24292f; }
+  body.light .pane-header { background: #eaeef2; color: #57606a; border-color: #d0d7de; }
+  body.light textarea { background: #fff; color: #24292f; }
+  body.light #output { background: #fff; color: #24292f; }
+  body.light .samples { background: #eaeef2; border-color: #d0d7de; }
+  body.light .bottom-bar { background: #eaeef2; border-color: #d0d7de; }
+  body.light .bottom-bar button,
+  body.light .bottom-bar label { background: #f6f8fa; color: #24292f; border-color: #d0d7de; }
+  body.light .modal { background: #fff; border-color: #d0d7de; }
+  body.light #tutorialContent code { background: #eaeef2; }
+  body.light #tutorialContent h3 { color: #6d28d9; border-color: #d0d7de; }
+
+  header {
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    padding: 6px 15px; display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    flex-shrink: 0; min-height: 52px;
+  }
+  header .logo {
+    width: 42px; height: 42px; object-fit: contain;
+    background: transparent; border: none; padding: 0; display: block;
+  }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .header-actions button,
+  .header-actions select {
+    background: rgba(255,255,255,.15); color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .header-actions button:hover,
+  .header-actions select:hover { background: rgba(255,255,255,.28); }
+  .header-actions select option { background: #1e1e2e; color: #fff; }
+
+  .container { display: flex; flex: 1; overflow: hidden; padding-bottom: 70px; }
+  .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #30363d; }
+  .pane:last-child { border-right: none; }
+  .pane-header {
+    background: #161b22; padding: 8px 15px; font-size: 12px; color: #8b949e;
+    border-bottom: 1px solid #30363d; display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 5px; flex-shrink: 0;
+  }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button {
+    background: transparent; border: 1px solid #30363d;
+    padding: 4px 12px; border-radius: 4px; cursor: pointer;
+    font-size: 11px; color: #8b949e; font-family: inherit;
+  }
+  .tabs button.active { background: #0d1117; border-color: #7c3aed; color: #7c3aed; }
+
+  textarea {
+    flex: 1; width: 100%; border: none; outline: none; padding: 15px;
+    font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.8;
+    resize: none; direction: ltr; text-align: left;
+    background: #0d1117; color: #c9d1d9; tab-size: 4;
+  }
+
+  #output {
+    flex: 1; overflow-y: auto; padding: 15px;
+    background: #0d1117; color: #c9d1d9;
+    font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.8;
+    direction: ltr; text-align: left; white-space: pre-wrap;
+  }
+  #output .err { color: #f85149; background: rgba(248,81,73,.1); padding: 8px 12px; border-radius: 4px; display: block; }
+  #output .label { color: #8b949e; font-size: 12px; display: block; margin-bottom: 10px; }
+
+  #preview {
+    flex: 1; overflow-y: auto; background: #fff; color: #24292f;
+    display: none;
+  }
+  #preview iframe { width: 100%; height: 100%; border: none; display: block; }
+
+  .samples {
+    display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 15px;
+    background: #161b22; border-bottom: 1px solid #30363d; flex-shrink: 0;
+  }
+  .samples button {
+    background: #5b21b6; color: #fff; border: none;
+    padding: 5px 12px; border-radius: 4px; cursor: pointer;
+    font-family: inherit; font-size: 12px;
+  }
+  .samples button:hover { background: #7c3aed; }
+
+  .error-bar {
+    background: #f85149; color: #fff; padding: 8px 15px;
+    font-size: 12px; font-family: monospace; display: none; flex-shrink: 0;
+  }
+  .error-bar.show { display: block; }
+
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #161b22; border-top: 2px solid #30363d;
+    padding: 10px 20px; display: flex; gap: 10px; align-items: center;
+    flex-wrap: wrap; z-index: 100;
+  }
+  .bottom-bar button,
+  .bottom-bar label {
+    background: #21262d; color: #c9d1d9; border: 1px solid #30363d;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .bottom-bar button:hover,
+  .bottom-bar label:hover { background: #30363d; }
+  .bottom-bar button.primary { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+  .bottom-bar button.primary:hover { background: #8b5cf6; }
+  .bottom-bar .status { margin-left: auto; font-size: 12px; color: #8b949e; font-family: monospace; }
+  .bottom-bar input[type=file] { display: none; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 16px; padding: 25px 30px;
+    max-width: 500px; width: 90%; max-height: 85vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal h2 { margin: 0 0 15px; color: #7c3aed; font-size: 22px; text-align: center; }
+  .modal.about { text-align: center; max-width: 420px; }
+  .modal.about img {
+    width: 80px; height: 80px; object-fit: contain;
+    background: transparent; border: none; padding: 0; margin-bottom: 15px;
+  }
+  .modal.about .team { font-size: 16px; margin: 10px 0 5px; }
+  .modal.about .desc { font-size: 13px; color: #8b949e; line-height: 1.7; margin: 10px 0 20px; }
+  .modal .close-btn {
+    background: #7c3aed; color: #fff; border: none;
+    padding: 10px 30px; border-radius: 8px; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    display: block; margin: 20px auto 0;
+  }
+  .modal .close-btn:hover { background: #8b5cf6; }
+
+  #tutorialContent { line-height: 1.9; font-size: 14px; }
+  #tutorialContent h3 { color: #a78bfa; margin-top: 20px; border-bottom: 1px solid #30363d; padding-bottom: 6px; }
+  #tutorialContent code {
+    background: #21262d; color: #f85149;
+    padding: 2px 6px; border-radius: 4px;
+    font-family: 'Consolas', monospace; font-size: 12px;
+    direction: ltr; display: inline-block;
+  }
+  #tutorialContent pre {
+    background: #0d1117; border: 1px solid #30363d;
+    border-radius: 8px; padding: 12px; overflow-x: auto;
+    direction: ltr; text-align: left;
+    font-family: 'Consolas', monospace; font-size: 12px;
+    line-height: 1.6; margin: 8px 0;
+  }
+  #tutorialContent pre code { background: transparent; color: inherit; padding: 0; display: block; }
+  #tutorialContent .tip { border-left: 4px solid #3fb950; background: rgba(63,185,80,.1); padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
+
+  @media (max-width: 768px) {
+    .container { flex-direction: column; }
+    .pane { border-right: none; border-bottom: 1px solid #30363d; }
+    .bottom-bar { padding: 8px 10px; gap: 6px; }
+    .bottom-bar button, .bottom-bar label { padding: 6px 10px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="logo.png" alt="PHT"
+       onerror="this.onerror=null; this.src='https://drive.google.com/thumbnail?id=1loF3LrbIeJ6Uc-2QZJsMxF3bj-PWwGB1&sz=w200';">
+  <div class="header-actions">
+    <select id="langSelect">
+      <option value="en" selected>🇬🇧 English</option>
+      <option value="fa">🇮🇷 فارسی</option>
+      <option value="ru">🇷🇺 Русский</option>
+      <option value="ar">🇸🇦 العربية</option>
+      <option value="zh">🇨🇳 中文</option>
+    </select>
+    <button id="themeToggle">🌙</button>
+    <button id="tutorialBtn">📚</button>
+    <button id="aboutBtn">ℹ️</button>
+  </div>
+</header>
+
+<div class="error-bar" id="errorBar"></div>
+
+<div class="container">
+  <div class="pane">
+    <div class="pane-header"><span id="editorLabel">✏️ Editor</span></div>
+    <div class="samples" id="samplesBar"></div>
+    <textarea id="editor" spellcheck="false"></textarea>
+  </div>
+  <div class="pane">
+    <div class="pane-header">
+      <span id="outputLabel">📤 Output</span>
+      <div class="tabs">
+        <button data-view="output" class="active" id="tabHtml">HTML</button>
+        <button data-view="preview" id="tabPage">Preview</button>
+      </div>
+    </div>
+    <div id="output"><span class="label">...</span></div>
+    <div id="preview"></div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <label for="fileInput" id="openLabel">📂 Open</label>
+  <input type="file" id="fileInput" accept=".pht,.html,.txt">
+  <button class="primary" id="runBtn">▶️ Run</button>
+  <button id="downloadBtn">📥 Save .pht</button>
+  <button id="clearBtn">🗑 Clear</button>
+  <span class="status" id="stats">0 lines</span>
+</div>
+
+<div class="modal-overlay" id="aboutModal">
+  <div class="modal about">
+    <img src="logo.png" alt="PHT"
+         onerror="this.onerror=null; this.src='https://drive.google.com/thumbnail?id=1loF3LrbIeJ6Uc-2QZJsMxF3bj-PWwGB1&sz=w200';">
+    <h2 id="aboutTitle">About Us</h2>
+    <p class="team" id="aboutTeam"></p>
+    <p class="desc" id="aboutDesc"></p>
+    <button class="close-btn" id="closeAbout">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="tutorialModal">
+  <div class="modal">
+    <h2 id="tutorialTitle">📚 PHT Tutorial</h2>
+    <div id="tutorialContent"></div>
+    <button class="close-btn" id="closeTutorial">Close</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  PHT Engine
+// ============================================================
+class PHT {
+  constructor() {
+    this.vars = new Map();
+    this.funcs = new Map();
+    this.maxSteps = 100000;
+    this.steps = 0;
+    this.builtins = {
+      'len': a => (typeof a[0] === 'string' || Array.isArray(a[0])) ? a[0].length : 0,
+      'abs': a => Math.abs(a[0]),
+      'max': a => Math.max(...a),
+      'min': a => Math.min(...a),
+      'sqrt': a => Math.sqrt(a[0]),
+      'pow': a => Math.pow(a[0], a[1]),
+      'floor': a => Math.floor(a[0]),
+      'ceil': a => Math.ceil(a[0]),
+      'round': a => Math.round(a[0]),
+      'str': a => String(a[0]),
+      'int': a => parseInt(a[0]),
+      'float': a => parseFloat(a[0]),
+      'upper': a => String(a[0]).toUpperCase(),
+      'lower': a => String(a[0]).toLowerCase(),
+      'join': a => Array.isArray(a[0]) ? a[0].join(a[1] || '') : '',
+      'type': a => { const v = a[0]; if (v === null || v === undefined) return 'none'; if (Array.isArray(v)) return 'array'; return typeof v; }
+    };
+  }
+  render(code) {
+    this.steps = 0; this.vars = new Map(); this.funcs = new Map();
+    code = this.extractFunctions(code);
+    code = this.processFor(code);
+    code = this.processIf(code);
+    code = this.processSet(code);
+    code = this.processExpressions(code);
+    return code;
+  }
+  extractFunctions(code) {
+    const re = /\{%\s*func\s+(\w+)\s*\(([^)]*)\)\s*%\}([\s\S]*?)\{%\s*endfunc\s*%\}/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+      const params = m[2].split(',').map(p => p.trim()).filter(p => p);
+      this.funcs.set(m[1], { name: m[1], params, body: m[3] });
+    }
+    return code.replace(re, '');
+  }
+  processSet(code) {
+    return code.replace(/\{%\s*set\s+(\w+)\s*=\s*([\s\S]*?)\s*%\}/g, (m, name, val) => {
+      try { this.vars.set(name, this.evalExpr(val.trim())); } catch(e) {}
+      return '';
+    });
+  }
+  processIf(code) {
+    let iter = 50;
+    while (iter-- > 0) {
+      const start = code.lastIndexOf('{% if');
+      if (start === -1) break;
+      const r = this.matchIf(code.slice(start));
+      if (!r) break;
+      const cond = this.truthy(this.evalExpr(r.condition));
+      code = code.slice(0, start) + (cond ? r.trueBody : r.falseBody) + code.slice(start + r.full.length);
+    }
+    return code;
+  }
+  matchIf(code) {
+    const m = code.match(/^\{%\s*if\s+([\s\S]*?)\s*%\}/);
+    if (!m) return null;
+    let pos = m[0].length, depth = 1, tBody = '', fBody = '', cur = 'true', tStart = pos;
+    while (pos < code.length) {
+      const nIf = code.indexOf('{% if', pos), nElse = code.indexOf('{% else', pos), nEnd = code.indexOf('{% endif', pos);
+      if (nEnd === -1 && nElse === -1 && nIf === -1) return null;
+      const c = [];
+      if (nIf !== -1) c.push({ pos: nIf, t: 'if' });
+      if (nElse !== -1) c.push({ pos: nElse, t: 'else' });
+      if (nEnd !== -1) c.push({ pos: nEnd, t: 'end' });
+      c.sort((a,b) => a.pos - b.pos);
+      const n = c[0];
+      if (n.t === 'if') { depth++; pos = n.pos + 5; }
+      else if (n.t === 'else') {
+        if (depth === 1 && cur === 'true') {
+          tBody = code.slice(tStart, n.pos); cur = 'false';
+          const eE = code.indexOf('%}', n.pos) + 2; tStart = eE; pos = eE;
+        } else pos = n.pos + 6;
+      } else {
+        depth--;
+        if (depth === 0) {
+          const eE = code.indexOf('%}', n.pos) + 2;
+          const last = code.slice(tStart, n.pos);
+          if (cur === 'true') tBody = last; else fBody = last;
+          return { full: code.slice(0, eE), condition: m[1], trueBody: tBody, falseBody: fBody };
+        }
+        pos = n.pos + 7;
+      }
+    }
+    return null;
+  }
+  processFor(code) {
+    let iter = 50;
+    while (iter-- > 0) {
+      const start = code.lastIndexOf('{% for');
+      if (start === -1) break;
+      const r = this.matchFor(code.slice(start));
+      if (!r) break;
+      const iterable = this.evalExpr(r.iterExpr);
+      let items = [];
+      if (Array.isArray(iterable)) items = iterable;
+      else if (typeof iterable === 'string') items = iterable.split('');
+      else if (typeof iterable === 'number') { for (let i = 1; i <= iterable; i++) items.push(i); }
+      let repl = '';
+      for (const item of items) {
+        this.steps++;
+        if (this.steps > this.maxSteps) throw new Error('Infinite loop');
+        const had = this.vars.has(r.variable), old = had ? this.vars.get(r.variable) : undefined;
+        this.vars.set(r.variable, item);
+        let p = r.body;
+        p = this.processSet(p); p = this.processIf(p); p = this.processFor(p); p = this.processExpressions(p);
+        repl += p;
+        if (had) this.vars.set(r.variable, old); else this.vars.delete(r.variable);
+      }
+      code = code.slice(0, start) + repl + code.slice(start + r.full.length);
+    }
+    return code;
+  }
+  matchFor(code) {
+    const m = code.match(/^\{%\s*for\s+(\w+)\s+in\s+([\s\S]*?)\s*%\}/);
+    if (!m) return null;
+    let pos = m[0].length, depth = 1, bStart = pos;
+    while (pos < code.length) {
+      const nFor = code.indexOf('{% for', pos), nEnd = code.indexOf('{% endfor', pos);
+      if (nEnd === -1 && nFor === -1) return null;
+      const c = [];
+      if (nFor !== -1) c.push({ pos: nFor, t: 'for' });
+      if (nEnd !== -1) c.push({ pos: nEnd, t: 'end' });
+      c.sort((a,b) => a.pos - b.pos);
+      const n = c[0];
+      if (n.t === 'for') { depth++; pos = n.pos + 5; }
+      else {
+        depth--;
+        if (depth === 0) {
+          const eE = code.indexOf('%}', n.pos) + 2;
+          return { full: code.slice(0, eE), variable: m[1], iterExpr: m[2], body: code.slice(bStart, n.pos) };
+        }
+        pos = n.pos + 9;
+      }
+    }
+    return null;
+  }
+  processExpressions(code) {
+    return code.replace(/\{\{([\s\S]*?)\}\}/g, (m, e) => {
+      try { return this.stringify(this.evalExpr(e.trim())); } catch(err) { return ''; }
+    });
+  }
+  evalExpr(expr) {
+    expr = expr.trim();
+    if ((expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"))) return expr.slice(1, -1);
+    if (/^-?\d+(\.\d+)?$/.test(expr)) return parseFloat(expr);
+    if (expr === 'true') return true;
+    if (expr === 'false') return false;
+    if (expr === 'null') return null;
+    if (expr.startsWith('[') && expr.endsWith(']')) {
+      return this.split(expr.slice(1, -1), ',').map(p => this.evalExpr(p.trim())).filter(p => p !== '');
+    }
+    const orP = this.split(expr, ' or ');
+    if (orP.length > 1) { for (const p of orP) if (this.truthy(this.evalExpr(p))) return true; return false; }
+    const andP = this.split(expr, ' and ');
+    if (andP.length > 1) { for (const p of andP) if (!this.truthy(this.evalExpr(p))) return false; return true; }
+    if (expr.startsWith('not ')) return !this.truthy(this.evalExpr(expr.slice(4)));
+    for (const op of ['==', '!=', '<=', '>=', '<', '>']) {
+      const parts = this.split(expr, op);
+      if (parts.length > 1) return this.applyOp(op, this.evalExpr(parts[0]), this.evalExpr(parts.slice(1).join(op)));
+    }
+    for (const op of ['+', '-', '*', '/', '%']) {
+      const parts = this.split(expr, op);
+      if (parts.length > 1) {
+        let r = this.evalExpr(parts[0]);
+        for (let i = 1; i < parts.length; i++) r = this.applyOp(op, r, this.evalExpr(parts[i]));
+        return r;
+      }
+    }
+    const cm = expr.match(/^(\w+)\s*\(([\s\S]*)\)$/);
+    if (cm) {
+      const args = this.split(cm[2], ',').map(a => this.evalExpr(a.trim())).filter(a => a !== '');
+      return this.callFunction(cm[1], args);
+    }
+    const im = expr.match(/^(\w+)\[([\s\S]*)\]$/);
+    if (im) { const o = this.vars.get(im[1]); return o ? o[this.evalExpr(im[2])] : undefined; }
+    if (/^\w+$/.test(expr)) {
+      if (this.vars.has(expr)) return this.vars.get(expr);
+      if (this.builtins[expr]) return this.builtins[expr];
+      if (this.funcs.has(expr)) return this.funcs.get(expr);
+      return undefined;
+    }
+    return expr;
+  }
+  split(str, sep) {
+    const parts = []; let d = 0, cur = '', i = 0;
+    while (i < str.length) {
+      if (d === 0 && str.startsWith(sep, i)) { parts.push(cur); cur = ''; i += sep.length; continue; }
+      const ch = str[i];
+      if (ch === '(' || ch === '[' || ch === '{') d++;
+      else if (ch === ')' || ch === ']' || ch === '}') d--;
+      cur += ch; i++;
+    }
+    parts.push(cur); return parts;
+  }
+  callFunction(name, args) {
+    if (this.builtins[name]) return this.builtins[name](args);
+    if (this.funcs.has(name)) {
+      const f = this.funcs.get(name);
+      const saved = new Map();
+      for (const p of f.params) saved.set(p, this.vars.has(p) ? this.vars.get(p) : undefined);
+      for (let i = 0; i < f.params.length; i++) this.vars.set(f.params[i], args[i]);
+      let res = '';
+      try {
+        let b = f.body;
+        b = this.processSet(b); b = this.processIf(b); b = this.processFor(b); b = this.processExpressions(b);
+        res = b;
+      } catch (e) { throw e; }
+      for (const [k, v] of saved) { if (v === undefined) this.vars.delete(k); else this.vars.set(k, v); }
+      return res;
+    }
+    throw new Error('Unknown function: ' + name);
+  }
+  applyOp(op, a, b) {
+    switch (op) {
+      case '+': return (typeof a === 'string' || typeof b === 'string') ? String(a) + String(b) : (a || 0) + (b || 0);
+      case '-': return (a || 0) - (b || 0);
+      case '*': return (a || 0) * (b || 0);
+      case '/': if (b === 0) throw new Error('Division by zero'); return (a || 0) / (b || 0);
+      case '%': return (a || 0) % (b || 0);
+      case '==': return a === b;
+      case '!=': return a !== b;
+      case '<': return a < b;
+      case '>': return a > b;
+      case '<=': return a <= b;
+      case '>=': return a >= b;
+    }
+  }
+  truthy(v) {
+    if (v === null || v === undefined || v === false || v === 0 || v === '') return false;
+    if (Array.isArray(v) && v.length === 0) return false;
+    return true;
+  }
+  stringify(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'boolean') return v ? 'true' : 'false';
+    if (Array.isArray(v)) return '[' + v.map(x => this.stringify(x)).join(', ') + ']';
+    return String(v);
+  }
+}
+
+// ============================================================
+//  Samples — names localized per language
+// ============================================================
+const samplesByLang = {
+  en: {
+    hello: '<h1>Hello World!</h1>\n<p>Welcome to PHT</p>\n\n{% set name = "John" %}\n{% set age = 25 %}\n\n<h2>Hello {{ name }}</h2>\n<p>Age: {{ age }}</p>',
+    vars: '{% set name = "John" %}\n{% set age = 25 %}\n{% set items = ["Book", "Pen", "Notebook"] %}\n\n<h1>Info</h1>\n<p>Name: {{ name }}</p>\n<p>Age: {{ age }}</p>\n<p>Items: {{ items }}</p>\n<p>Count: {{ len(items) }}</p>',
+    if: '{% set age = 20 %}\n\n<h1>Age Check</h1>\n\n{% if age >= 18 %}\n    <p style="color:green">✅ You are an adult</p>\n{% else %}\n    <p style="color:red">❌ You are a child</p>\n{% endif %}',
+    for: '<h1>Loops</h1>\n<ul>\n{% for i in [1, 2, 3, 4, 5] %}\n    <li>Number {{ i }}</li>\n{% endfor %}\n</ul>\n\n{% set fruits = ["Apple", "Banana", "Orange", "Grape"] %}\n<h2>Fruits:</h2>\n<ul>\n{% for fruit in fruits %}\n    <li>{{ fruit }}</li>\n{% endfor %}\n</ul>',
+    func: '{% func greet(name) %}\n    <p style="color:blue">👋 Hello {{ name }}!</p>\n{% endfunc %}\n\n<h1>Functions</h1>\n{{ greet("John") }}\n{{ greet("Mary") }}\n{{ greet("Alex") }}',
+    full: '{% set title = "My Page" %}\n{% set name = "John" %}\n{% set age = 25 %}\n{% set skills = ["HTML", "CSS", "JavaScript", "PHT"] %}\n\n<!DOCTYPE html>\n<html>\n<head>\n    <title>{{ title }}</title>\n    <style>body { font-family: Arial; padding: 20px; background: #f0f0f0; } h1 { color: purple; } .card { background: white; padding: 15px; border-radius: 8px; margin: 10px 0; }</style>\n</head>\n<body>\n<h1>Hello {{ name }}!</h1>\n<div class="card">\n    <p>Age: {{ age }}</p>\n    {% if age >= 18 %}\n        <p style="color:green">You are an adult</p>\n    {% else %}\n        <p style="color:red">You are a child</p>\n    {% endif %}\n</div>\n<div class="card">\n    <h2>Skills:</h2>\n    <ul>\n    {% for skill in skills %}\n        <li>{{ skill }}</li>\n    {% endfor %}\n    </ul>\n</div>\n</body>\n</html>'
+  },
+  fa: {
+    hello: '<h1>سلام دنیا!</h1>\n<p>به PHT خوش آمدی</p>\n\n{% set name = "علی" %}\n{% set age = 25 %}\n\n<h2>سلام {{ name }}</h2>\n<p>سن: {{ age }}</p>',
+    vars: '{% set name = "علی" %}\n{% set age = 25 %}\n{% set items = ["کتاب", "خودکار", "دفتر"] %}\n\n<h1>اطلاعات</h1>\n<p>نام: {{ name }}</p>\n<p>سن: {{ age }}</p>\n<p>وسایل: {{ items }}</p>\n<p>تعداد: {{ len(items) }}</p>',
+    if: '{% set age = 20 %}\n\n<h1>بررسی سن</h1>\n\n{% if age >= 18 %}\n    <p style="color:green">✅ شما بزرگسال هستید</p>\n{% else %}\n    <p style="color:red">❌ شما کودک هستید</p>\n{% endif %}',
+    for: '<h1>حلقه‌ها</h1>\n<ul>\n{% for i in [1, 2, 3, 4, 5] %}\n    <li>شماره {{ i }}</li>\n{% endfor %}\n</ul>\n\n{% set fruits = ["سیب", "موز", "پرتقال", "انگور"] %}\n<h2>میوه‌ها:</h2>\n<ul>\n{% for fruit in fruits %}\n    <li>{{ fruit }}</li>\n{% endfor %}\n</ul>',
+    func: '{% func greet(name) %}\n    <p style="color:blue">👋 سلام {{ name }} عزیز!</p>\n{% endfunc %}\n\n<h1>توابع</h1>\n{{ greet("علی") }}\n{{ greet("مریم") }}\n{{ greet("رضا") }}',
+    full: '{% set title = "صفحه من" %}\n{% set name = "علی" %}\n{% set age = 25 %}\n{% set skills = ["HTML", "CSS", "JavaScript", "PHT"] %}\n\n<!DOCTYPE html>\n<html>\n<head>\n    <title>{{ title }}</title>\n    <style>body { font-family: Tahoma; padding: 20px; background: #f0f0f0; direction: rtl; } h1 { color: purple; } .card { background: white; padding: 15px; border-radius: 8px; margin: 10px 0; }</style>\n</head>\n<body>\n<h1>سلام {{ name }}!</h1>\n<div class="card">\n    <p>سن: {{ age }}</p>\n    {% if age >= 18 %}\n        <p style="color:green">شما بزرگسال هستید</p>\n    {% else %}\n        <p style="color:red">شما کودک هستید</p>\n    {% endif %}\n</div>\n<div class="card">\n    <h2>مهارت‌ها:</h2>\n    <ul>\n    {% for skill in skills %}\n        <li>{{ skill }}</li>\n    {% endfor %}\n    </ul>\n</div>\n</body>\n</html>'
+  },
+  ru: {
+    hello: '<h1>Привет мир!</h1>\n<p>Добро пожаловать в PHT</p>\n\n{% set name = "Иван" %}\n{% set age = 25 %}\n\n<h2>Привет {{ name }}</h2>\n<p>Возраст: {{ age }}</p>',
+    vars: '{% set name = "Иван" %}\n{% set age = 25 %}\n{% set items = ["Книга", "Ручка", "Тетрадь"] %}\n\n<h1>Информация</h1>\n<p>Имя: {{ name }}</p>\n<p>Возраст: {{ age }}</p>\n<p>Предметы: {{ items }}</p>',
+    if: '{% set age = 20 %}\n\n<h1>Проверка возраста</h1>\n\n{% if age >= 18 %}\n    <p style="color:green">✅ Вы взрослый</p>\n{% else %}\n    <p style="color:red">❌ Вы ребёнок</p>\n{% endif %}',
+    for: '<h1>Циклы</h1>\n<ul>\n{% for i in [1, 2, 3, 4, 5] %}\n    <li>Номер {{ i }}</li>\n{% endfor %}\n</ul>',
+    func: '{% func greet(name) %}\n    <p style="color:blue">👋 Привет {{ name }}!</p>\n{% endfunc %}\n\n<h1>Функции</h1>\n{{ greet("Иван") }}\n{{ greet("Мария") }}',
+    full: '{% set title = "Моя страница" %}\n{% set name = "Иван" %}\n{% set age = 25 %}\n\n<!DOCTYPE html>\n<html><head><title>{{ title }}</title></head>\n<body>\n<h1>Привет {{ name }}!</h1>\n<p>Возраст: {{ age }}</p>\n</body></html>'
+  },
+  ar: {
+    hello: '<h1>مرحبا بالعالم!</h1>\n<p>أهلاً بك في PHT</p>\n\n{% set name = "محمد" %}\n{% set age = 25 %}\n\n<h2>مرحبا {{ name }}</h2>\n<p>العمر: {{ age }}</p>',
+    vars: '{% set name = "محمد" %}\n{% set age = 25 %}\n{% set items = ["كتاب", "قلم", "دفتر"] %}\n\n<h1>المعلومات</h1>\n<p>الاسم: {{ name }}</p>\n<p>العمر: {{ age }}</p>\n<p>العناصر: {{ items }}</p>',
+    if: '{% set age = 20 %}\n\n<h1>فحص العمر</h1>\n\n{% if age >= 18 %}\n    <p style="color:green">✅ أنت بالغ</p>\n{% else %}\n    <p style="color:red">❌ أنت طفل</p>\n{% endif %}',
+    for: '<h1>الحلقات</h1>\n<ul>\n{% for i in [1, 2, 3, 4, 5] %}\n    <li>رقم {{ i }}</li>\n{% endfor %}\n</ul>',
+    func: '{% func greet(name) %}\n    <p style="color:blue">👋 مرحبا {{ name }}!</p>\n{% endfunc %}\n\n<h1>الدوال</h1>\n{{ greet("محمد") }}\n{{ greet("فاطمة") }}',
+    full: '{% set title = "صفحتي" %}\n{% set name = "محمد" %}\n{% set age = 25 %}\n\n<!DOCTYPE html>\n<html dir="rtl"><head><title>{{ title }}</title></head>\n<body>\n<h1>مرحبا {{ name }}!</h1>\n<p>العمر: {{ age }}</p>\n</body></html>'
+  },
+  zh: {
+    hello: '<h1>你好世界！</h1>\n<p>欢迎来到 PHT</p>\n\n{% set name = "小明" %}\n{% set age = 25 %}\n\n<h2>你好 {{ name }}</h2>\n<p>年龄：{{ age }}</p>',
+    vars: '{% set name = "小明" %}\n{% set age = 25 %}\n{% set items = ["书", "笔", "笔记本"] %}\n\n<h1>信息</h1>\n<p>姓名：{{ name }}</p>\n<p>年龄：{{ age }}</p>\n<p>物品：{{ items }}</p>',
+    if: '{% set age = 20 %}\n\n<h1>年龄检查</h1>\n\n{% if age >= 18 %}\n    <p style="color:green">✅ 你是成年人</p>\n{% else %}\n    <p style="color:red">❌ 你是孩子</p>\n{% endif %}',
+    for: '<h1>循环</h1>\n<ul>\n{% for i in [1, 2, 3, 4, 5] %}\n    <li>数字 {{ i }}</li>\n{% endfor %}\n</ul>',
+    func: '{% func greet(name) %}\n    <p style="color:blue">👋 你好 {{ name }}！</p>\n{% endfunc %}\n\n<h1>函数</h1>\n{{ greet("小明") }}\n{{ greet("小红") }}',
+    full: '{% set title = "我的页面" %}\n{% set name = "小明" %}\n{% set age = 25 %}\n\n<!DOCTYPE html>\n<html><head><title>{{ title }}</title></head>\n<body>\n<h1>你好 {{ name }}！</h1>\n<p>年龄：{{ age }}</p>\n</body></html>'
+  }
+};
+
+// ============================================================
+//  i18n
+// ============================================================
+const i18n = {
+  en: { editorLabel:'✏️ PHT Editor', outputLabel:'📤 Output', tabHtml:'HTML', tabPage:'Preview', open:'📂 Open', run:'▶️ Run', save:'📥 Save .pht', clear:'🗑 Clear', lines:'lines', night:'🌙', day:'☀️', about:'ℹ️', tutorial:'📚', close:'Close', ready:'Ready — click ▶️', hello:'👋 Hello', vars:'📦 Variables', if:'🔀 Condition', for:'🔁 Loop', func:'📦 Function', full:'🎨 Full', running:'Running...', empty:'Program is empty', confirmClear:'Are you sure?', aboutTitle:'About Us', aboutTeam:'Made by the PHT Project Team', aboutDesc:'PHT is a simple, powerful template language for building dynamic web pages.', tutorialTitle:'📚 PHT Tutorial' },
+  fa: { editorLabel:'✏️ ویرایشگر PHT', outputLabel:'📤 خروجی', tabHtml:'HTML', tabPage:'صفحه', open:'📂 باز کردن', run:'▶️ اجرا', save:'📥 ذخیره', clear:'🗑 پاک', lines:'خط', night:'🌙', day:'☀️', about:'ℹ️', tutorial:'📚', close:'بستن', ready:'آماده اجرا — روی ▶️ بزن', hello:'👋 سلام', vars:'📦 متغیر', if:'🔀 شرط', for:'🔁 حلقه', func:'📦 تابع', full:'🎨 کامل', running:'در حال اجرا...', empty:'برنامه خالیه', confirmClear:'مطمئنی؟', aboutTitle:'درباره ما', aboutTeam:'ساخته شده توسط تیم پروژه پی اچ تی', aboutDesc:'PHT یک زبان قالب‌بندی ساده و قدرتمند برای ساخت صفحات وب پویا است.', tutorialTitle:'📚 آموزش PHT' },
+  ru: { editorLabel:'✏️ Редактор PHT', outputLabel:'📤 Вывод', tabHtml:'HTML', tabPage:'Просмотр', open:'📂 Открыть', run:'▶️ Запуск', save:'📥 Сохранить', clear:'🗑 Очистить', lines:'строк', night:'🌙', day:'☀️', about:'ℹ️', tutorial:'📚', close:'Закрыть', ready:'Готово — нажмите ▶️', hello:'👋 Привет', vars:'📦 Переменные', if:'🔀 Условие', for:'🔁 Цикл', func:'📦 Функция', full:'🎨 Полный', running:'Выполняется...', empty:'Программа пуста', confirmClear:'Уверены?', aboutTitle:'О нас', aboutTeam:'Создано командой проекта PHT', aboutDesc:'PHT — простой и мощный язык шаблонов для создания динамических веб-страниц.', tutorialTitle:'📚 Учебник PHT' },
+  ar: { editorLabel:'✏️ محرر PHT', outputLabel:'📤 الإخراج', tabHtml:'HTML', tabPage:'معاينة', open:'📂 فتح', run:'▶️ تشغيل', save:'📥 حفظ', clear:'🗑 مسح', lines:'أسطر', night:'🌙', day:'☀️', about:'ℹ️', tutorial:'📚', close:'إغلاق', ready:'جاهز — اضغط ▶️', hello:'👋 مرحبا', vars:'📦 متغيرات', if:'🔀 شرط', for:'🔁 حلقة', func:'📦 دالة', full:'🎨 كامل', running:'جارٍ التنفيذ...', empty:'البرنامج فارغ', confirmClear:'متأكد؟', aboutTitle:'من نحن', aboutTeam:'صنع بواسطة فريق مشروع PHT', aboutDesc:'PHT هي لغة قوالب بسيطة وقوية لبناء صفحات ويب ديناميكية.', tutorialTitle:'📚 درس PHT' },
+  zh: { editorLabel:'✏️ PHT 编辑器', outputLabel:'📤 输出', tabHtml:'HTML', tabPage:'预览', open:'📂 打开', run:'▶️ 运行', save:'📥 保存 .pht', clear:'🗑 清空', lines:'行', night:'🌙', day:'☀️', about:'ℹ️', tutorial:'📚', close:'关闭', ready:'准备就绪 — 点击 ▶️', hello:'👋 你好', vars:'📦 变量', if:'🔀 条件', for:'🔁 循环', func:'📦 函数', full:'🎨 完整', running:'运行中...', empty:'程序为空', confirmClear:'确定吗？', aboutTitle:'关于我们', aboutTeam:'由 PHT 项目团队制作', aboutDesc:'PHT 是一种简单而强大的模板语言，用于构建动态网页。', tutorialTitle:'📚 PHT 教程' }
+};
+
+const tutorialByLang = {
+  en: '<h3>📦 1. Variables</h3><pre><code>{% set name = "John" %}\n{% set age = 25 %}</code></pre><h3>🔢 2. Expressions</h3><pre><code>&lt;h1&gt;Hello {{ name }}&lt;/h1&gt;</code></pre><h3>🔀 3. Conditions</h3><pre><code>{% if age >= 18 %}\n    &lt;p&gt;Adult ✅&lt;/p&gt;\n{% else %}\n    &lt;p&gt;Child ❌&lt;/p&gt;\n{% endif %}</code></pre><h3>🔁 4. Loops</h3><pre><code>{% for item in ["Apple", "Banana"] %}\n    &lt;li&gt;{{ item }}&lt;/li&gt;\n{% endfor %}</code></pre><h3>🧩 5. Functions</h3><pre><code>{% func greet(name) %}\n    &lt;p&gt;Hello {{ name }}&lt;/p&gt;\n{% endfunc %}</code></pre><h3>🛠 6. Built-in Functions</h3><p><code>len</code> <code>abs</code> <code>max</code> <code>min</code> <code>sqrt</code> <code>pow</code> <code>floor</code> <code>ceil</code> <code>round</code> <code>str</code> <code>int</code> <code>float</code> <code>upper</code> <code>lower</code> <code>join</code> <code>type</code></p><div class="tip">💡 <b>Shortcut:</b> <code>Ctrl + Enter</code> to run</div>',
+  fa: '<h3>📦 ۱. متغیرها</h3><pre><code>{% set name = "علی" %}\n{% set age = 25 %}</code></pre><h3>🔢 ۲. نمایش</h3><pre><code>&lt;h1&gt;سلام {{ name }}&lt;/h1&gt;</code></pre><h3>🔀 ۳. شرط</h3><pre><code>{% if age >= 18 %}\n    &lt;p&gt;بزرگسال ✅&lt;/p&gt;\n{% else %}\n    &lt;p&gt;کودک ❌&lt;/p&gt;\n{% endif %}</code></pre><h3>🔁 ۴. حلقه</h3><pre><code>{% for item in ["سیب", "موز"] %}\n    &lt;li&gt;{{ item }}&lt;/li&gt;\n{% endfor %}</code></pre><h3>🧩 ۵. تابع</h3><pre><code>{% func greet(name) %}\n    &lt;p&gt;سلام {{ name }}&lt;/p&gt;\n{% endfunc %}</code></pre><h3>🛠 ۶. توابع آماده</h3><p><code>len</code> <code>abs</code> <code>max</code> <code>min</code> <code>sqrt</code> <code>pow</code> <code>floor</code> <code>ceil</code> <code>round</code> <code>str</code> <code>int</code> <code>float</code> <code>upper</code> <code>lower</code> <code>join</code> <code>type</code></p><div class="tip">💡 <b>میانبر:</b> <code>Ctrl + Enter</code> برای اجرا</div>',
+  ru: '<h3>📦 1. Переменные</h3><pre><code>{% set name = "Иван" %}</code></pre><h3>🔀 2. Условия</h3><pre><code>{% if age >= 18 %}...{% else %}...{% endif %}</code></pre><h3>🔁 3. Циклы</h3><pre><code>{% for i in [1,2,3] %}...{% endfor %}</code></pre><h3>🧩 4. Функции</h3><pre><code>{% func greet(name) %}...{% endfunc %}</code></pre>',
+  ar: '<h3>📦 1. المتغيرات</h3><pre><code>{% set name = "محمد" %}</code></pre><h3>🔀 2. الشروط</h3><pre><code>{% if age >= 18 %}...{% else %}...{% endif %}</code></pre><h3>🔁 3. الحلقات</h3><pre><code>{% for i in [1,2,3] %}...{% endfor %}</code></pre><h3>🧩 4. الدوال</h3><pre><code>{% func greet(name) %}...{% endfunc %}</code></pre>',
+  zh: '<h3>📦 1. 变量</h3><pre><code>{% set name = "小明" %}</code></pre><h3>🔀 2. 条件</h3><pre><code>{% if age >= 18 %}...{% else %}...{% endif %}</code></pre><h3>🔁 3. 循环</h3><pre><code>{% for i in [1,2,3] %}...{% endfor %}</code></pre><h3>🧩 4. 函数</h3><pre><code>{% func greet(name) %}...{% endfunc %}</code></pre>'
+};
+
+// ============================================================
+//  State
+// ============================================================
+var currentLang = 'en';
+var currentSample = 'hello';
+var currentView = 'output';
+
+var editor = document.getElementById('editor');
+var output = document.getElementById('output');
+var preview = document.getElementById('preview');
+var stats = document.getElementById('stats');
+var errorBar = document.getElementById('errorBar');
+var fileInput = document.getElementById('fileInput');
+var themeToggle = document.getElementById('themeToggle');
+var langSelect = document.getElementById('langSelect');
+var aboutModal = document.getElementById('aboutModal');
+var tutorialModal = document.getElementById('tutorialModal');
+var samplesBar = document.getElementById('samplesBar');
+
+// ============================================================
+//  Helpers
+// ============================================================
+function t() { return i18n[currentLang] || i18n.en; }
+function updateStats() {
+  stats.textContent = editor.value.split('\n').length + ' ' + t().lines;
+}
+function showError(msg) { errorBar.textContent = '❌ ' + msg; errorBar.classList.add('show'); }
+function hideError() { errorBar.classList.remove('show'); }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ============================================================
+//  Load Sample
+// ============================================================
+function loadSample(name) {
+  currentSample = name;
+  var s = samplesByLang[currentLang] || samplesByLang.en;
+  if (s && s[name]) {
+    editor.value = s[name];
+    updateStats();
+    hideError();
+    output.innerHTML = '<span class="label">' + t().ready + '</span>';
+    preview.innerHTML = '';
+  }
+}
+
+// ============================================================
+//  Build Samples Bar (with addEventListener)
+// ============================================================
+function buildSamplesBar() {
+  samplesBar.innerHTML = '';
+  var keys = ['hello', 'vars', 'if', 'for', 'func', 'full'];
+  keys.forEach(function(k) {
+    var btn = document.createElement('button');
+    btn.textContent = t()[k] || k;
+    btn.addEventListener('click', function() { loadSample(k); });
+    samplesBar.appendChild(btn);
+  });
+}
+
+// ============================================================
+//  Run Code
+// ============================================================
+function runCode() {
+  hideError();
+  output.innerHTML = '<span class="label">' + t().running + '</span>';
+  var code = editor.value;
+  if (!code.trim()) {
+    output.innerHTML = '<span class="label">' + t().empty + '</span>';
+    return;
+  }
+  try {
+    var result = new PHT().render(code);
+    output.textContent = result;
+    preview.innerHTML = '';
+    var iframe = document.createElement('iframe');
+    iframe.sandbox = 'allow-scripts allow-same-origin allow-modals allow-forms allow-popups';
+    iframe.srcdoc = result;
+    preview.appendChild(iframe);
+  } catch (e) {
+    output.innerHTML = '<span class="err">' + esc(e.message) + '</span>';
+    showError(e.message);
+  }
+}
+
+// ============================================================
+//  Set Language
+// ============================================================
+function setLanguage(lang) {
+  currentLang = lang;
+  var tr = t();
+
+  document.getElementById('editorLabel').textContent = tr.editorLabel;
+  document.getElementById('outputLabel').textContent = tr.outputLabel;
+  document.getElementById('tabHtml').textContent = tr.tabHtml;
+  document.getElementById('tabPage').textContent = tr.tabPage;
+  document.getElementById('openLabel').textContent = tr.open;
+  document.getElementById('runBtn').textContent = tr.run;
+  document.getElementById('downloadBtn').textContent = tr.save;
+  document.getElementById('clearBtn').textContent = tr.clear;
+  document.getElementById('aboutBtn').textContent = tr.about;
+  document.getElementById('tutorialBtn').textContent = tr.tutorial;
+  document.getElementById('closeAbout').textContent = tr.close;
+  document.getElementById('closeTutorial').textContent = tr.close;
+  document.getElementById('aboutTitle').textContent = tr.aboutTitle;
+  document.getElementById('aboutTeam').textContent = tr.aboutTeam;
+  document.getElementById('aboutDesc').textContent = tr.aboutDesc;
+  document.getElementById('tutorialTitle').textContent = tr.tutorialTitle;
+  themeToggle.textContent = document.body.classList.contains('light') ? tr.day : tr.night;
+  document.getElementById('tutorialContent').innerHTML = tutorialByLang[lang] || tutorialByLang.en;
+
+  buildSamplesBar();
+  if (currentSample) loadSample(currentSample);
+
+  // RTL for Persian and Arabic
+  var rtl = (lang === 'fa' || lang === 'ar');
+  document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+}
+
+// ============================================================
+//  Event Listeners (all addEventListener, no inline onclick)
+// ============================================================
+editor.addEventListener('input', function() {
+  updateStats();
+  currentSample = null;
+});
+
+document.querySelectorAll('.tabs button').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tabs button').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    output.style.display = currentView === 'output' ? 'block' : 'none';
+    preview.style.display = currentView === 'preview' ? 'block' : 'none';
+  });
+});
+
+document.getElementById('runBtn').addEventListener('click', runCode);
+
+document.getElementById('clearBtn').addEventListener('click', function() {
+  if (confirm(t().confirmClear)) {
+    editor.value = '';
+    currentSample = null;
+    output.innerHTML = '<span class="label">' + t().empty + '</span>';
+    preview.innerHTML = '';
+    updateStats();
+    hideError();
+  }
+});
+
+document.getElementById('downloadBtn').addEventListener('click', function() {
+  var blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'program.pht';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+fileInput.addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    editor.value = ev.target.result;
+    currentSample = null;
+    updateStats();
+    hideError();
+  };
+  reader.readAsText(file, 'utf-8');
+  fileInput.value = '';
+});
+
+editor.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    runCode();
+  }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    var s = editor.selectionStart, en = editor.selectionEnd;
+    editor.value = editor.value.slice(0, s) + '    ' + editor.value.slice(en);
+    editor.selectionStart = editor.selectionEnd = s + 4;
+  }
+});
+
+themeToggle.addEventListener('click', function() {
+  document.body.classList.toggle('light');
+  themeToggle.textContent = document.body.classList.contains('light') ? t().day : t().night;
+});
+
+langSelect.addEventListener('change', function(e) {
+  setLanguage(e.target.value);
+});
+
+document.getElementById('aboutBtn').addEventListener('click', function() {
+  aboutModal.classList.add('show');
+});
+document.getElementById('closeAbout').addEventListener('click', function() {
+  aboutModal.classList.remove('show');
+});
+aboutModal.addEventListener('click', function(e) {
+  if (e.target === aboutModal) aboutModal.classList.remove('show');
+});
+
+document.getElementById('tutorialBtn').addEventListener('click', function() {
+  tutorialModal.classList.add('show');
+});
+document.getElementById('closeTutorial').addEventListener('click', function() {
+  tutorialModal.classList.remove('show');
+});
+tutorialModal.addEventListener('click', function(e) {
+  if (e.target === tutorialModal) tutorialModal.classList.remove('show');
+});
+
+// ============================================================
+//  Initialize — DEFAULT LANGUAGE = ENGLISH
+// ============================================================
+setLanguage('en');
+loadSample('hello');
+
+console.log('PHT loaded successfully ✅ — Default language: English');
+</script>
+</body>
+</html>
